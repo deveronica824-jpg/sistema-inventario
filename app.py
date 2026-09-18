@@ -23,20 +23,15 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Fondo general en gris/azul pastel muy claro */
     .stApp {
         background-color: #F8FAFC;
         color: #0F172A;
         font-family: 'Segoe UI', Roboto, sans-serif;
     }
-    
-    /* Personalización de la Barra Lateral (Sidebar) */
     section[data-testid="stSidebar"] {
         background-color: #F1F5F9 !important;
         border-right: 1px solid #CBD5E1;
     }
-    
-    /* Encabezado Principal Web */
     .web-header {
         background-color: #FFFFFF;
         padding: 18px 24px;
@@ -60,8 +55,6 @@ st.markdown("""
         color: #475569;
         margin-top: 2px;
     }
-    
-    /* Titulares de Sección */
     .section-title {
         font-size: 20px;
         font-weight: 700;
@@ -70,8 +63,6 @@ st.markdown("""
         padding-bottom: 5px;
         border-bottom: 2px solid #E2E8F0;
     }
-    
-    /* Estilo de Campos de Entrada: Gris claro suave y Azul Pastel sin tonos oscuros */
     div[data-baseweb="input"] > div, 
     div[data-baseweb="select"] > div,
     textarea {
@@ -90,8 +81,6 @@ st.markdown("""
         font-weight: 600 !important;
         color: #1E293B !important;
     }
-    
-    /* Botones de Acción principales (Azul Corporativo Claro) */
     .stButton>button {
         background-color: #2563EB;
         color: #FFFFFF;
@@ -106,8 +95,6 @@ st.markdown("""
         background-color: #1D4ED8;
         color: #FFFFFF;
     }
-    
-    /* Tarjetas de Métricas en el Dashboard */
     div[data-testid="stMetric"] {
         background-color: #FFFFFF;
         border: 1px solid #DBEAFE;
@@ -124,14 +111,6 @@ st.markdown("""
         color: #1E3A8A;
         font-size: 22px;
         font-weight: 700;
-    }
-
-    /* Impresión */
-    @media print {
-        body * { visibility: hidden; }
-        .printable-area, .printable-area * { visibility: visible; }
-        .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
-        .no-print { display: none !important; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -172,7 +151,7 @@ def extraer_datos_pdf(archivo_pdf):
     return datos
 
 # ---------------------------------------------------------
-# BASE DE DATOS Y MIGRACIÓN DE COLUMNAS
+# BASE DE DATOS Y ESTRUCTURAS DE TABLAS
 # ---------------------------------------------------------
 def get_connection():
     return sqlite3.connect("sistema_pedregal.db", check_same_thread=False)
@@ -181,7 +160,16 @@ def inicializar_bd():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Catálogo de Clientes
+    # Usuarios y Roles
+    cursor.execute('''CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT UNIQUE,
+        password TEXT,
+        nombre TEXT,
+        rol TEXT
+    )''')
+    
+    # Clientes
     cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         nombre TEXT UNIQUE, 
@@ -192,7 +180,7 @@ def inicializar_bd():
         contacto TEXT
     )''')
     
-    # Catálogo de Proveedores de Flete
+    # Proveedores de Flete
     cursor.execute('''CREATE TABLE IF NOT EXISTS proveedores_fletes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT UNIQUE,
@@ -201,6 +189,20 @@ def inicializar_bd():
         contacto TEXT
     )''')
     
+    # Insumos / Fertilizantes y Agroquímicos Aportados por Clientes
+    cursor.execute('''CREATE TABLE IF NOT EXISTS insumos_agroquimicos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha DATE,
+        cliente TEXT,
+        producto TEXT,
+        unidad TEXT,
+        cantidad_ingresada REAL,
+        costo_unitario REAL,
+        monto_total REAL,
+        observaciones TEXT
+    )''')
+    
+    # Remisiones
     cursor.execute('''CREATE TABLE IF NOT EXISTS remisiones (
         folio INTEGER PRIMARY KEY, 
         fecha DATE, 
@@ -227,6 +229,7 @@ def inicializar_bd():
         FOREIGN KEY (folio_remision) REFERENCES remisiones (folio)
     )''')
     
+    # Evaluaciones
     cursor.execute('''CREATE TABLE IF NOT EXISTS evaluaciones (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         folio_evaluacion TEXT, 
@@ -239,6 +242,7 @@ def inicializar_bd():
         archivo_adjunto BLOB
     )''')
     
+    # Fletes
     cursor.execute('''CREATE TABLE IF NOT EXISTS fletes (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         folio_remision INTEGER, 
@@ -250,6 +254,7 @@ def inicializar_bd():
         banco TEXT
     )''')
     
+    # Facturas
     cursor.execute('''CREATE TABLE IF NOT EXISTS facturas (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         folio_factura TEXT, 
@@ -259,16 +264,18 @@ def inicializar_bd():
         folio_fiscal TEXT, 
         metodo_pago TEXT, 
         forma_pago TEXT, 
+        monto_subtotal REAL,
+        descuento_insumos REAL,
         monto_total REAL, 
         remisiones_asociadas TEXT, 
+        insumo_aplicado TEXT,
         fecha_pago DATE, 
         banco TEXT, 
         estatus_pago TEXT, 
-        factura_pdf BLOB, 
-        complemento_pdf BLOB, 
-        nota_credito_pdf BLOB
+        factura_pdf BLOB
     )''')
     
+    # Envases
     cursor.execute('''CREATE TABLE IF NOT EXISTS control_envases (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         fecha DATE, 
@@ -278,13 +285,14 @@ def inicializar_bd():
         cantidad INTEGER, 
         observacion TEXT
     )''')
-    
-    # Migración sutil por si faltan columnas en BD previas
-    try: cursor.execute("ALTER TABLE fletes ADD COLUMN proveedor TEXT")
-    except: pass
-    try: cursor.execute("ALTER TABLE fletes ADD COLUMN monto REAL")
-    except: pass
-    
+
+    # Inserción de Usuario Administrador Inicial si la tabla está vacía
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO usuarios (usuario, password, nombre, rol) VALUES ('admin', 'admin123', 'Administrador Principal', 'Administrador')")
+        cursor.execute("INSERT INTO usuarios (usuario, password, nombre, rol) VALUES ('operador', '12345', 'Operador de Campo', 'Operador')")
+
+    # Inserción de Catálogos Iniciales
     cursor.execute("INSERT OR IGNORE INTO clientes (nombre, rfc, domicilio, ciudad) VALUES ('LEONALI', 'LEO030827903', 'FABRICA EL LEON No. SN, EL LEON, C.P.74360, Puebla', 'Puebla')")
     cursor.execute("INSERT OR IGNORE INTO clientes (nombre, rfc, domicilio, ciudad) VALUES ('FRESCOS DON-GU', 'FDG101010AAA', 'San Miguel de Allende', 'San Miguel de Allende')")
     cursor.execute("INSERT OR IGNORE INTO proveedores_fletes (nombre, rfc) VALUES ('TRANSPORTES DEL BAJIO', 'TBA900101XXX')")
@@ -301,35 +309,72 @@ def exportar_excel(dataframe, nombre_hoja):
     return output.getvalue()
 
 # ---------------------------------------------------------
-# BARRA LATERAL: LOGO Y MENÚ
+# SISTEMA DE LOGIN Y CONTROL DE SESIÓN
 # ---------------------------------------------------------
-st.sidebar.markdown("### **CONFIGURACIÓN Y LOGO**")
-logo_empresa = st.sidebar.file_uploader("Cargar Logo de Empresa (PNG/JPG):", type=["png", "jpg", "jpeg"])
+if 'usuario_logueado' not in st.session_state:
+    st.session_state['usuario_logueado'] = None
+if 'rol_usuario' not in st.session_state:
+    st.session_state['rol_usuario'] = None
+if 'nombre_usuario' not in st.session_state:
+    st.session_state['nombre_usuario'] = None
+
+st.sidebar.markdown("### **INICIO DE SESIÓN**")
+
+if st.session_state['usuario_logueado'] is None:
+    user_input = st.sidebar.text_input("Usuario:")
+    pass_input = st.sidebar.text_input("Contraseña:", type="password")
+    if st.sidebar.button("Ingresar"):
+        c = conn.cursor()
+        c.execute("SELECT usuario, nombre, rol FROM usuarios WHERE usuario=? AND password=?", (user_input, pass_input))
+        res = c.fetchone()
+        if res:
+            st.session_state['usuario_logueado'] = res[0]
+            st.session_state['nombre_usuario'] = res[1]
+            st.session_state['rol_usuario'] = res[2]
+            st.sidebar.success(f"Bienvenido, {res[1]}")
+            st.rerun()
+        else:
+            st.sidebar.error("Usuario o contraseña incorrectos")
+    st.stop()
+else:
+    st.sidebar.markdown(f"**Usuario:** {st.session_state['nombre_usuario']}")
+    st.sidebar.markdown(f"**Rol:** `{st.session_state['rol_usuario']}`")
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state['usuario_logueado'] = None
+        st.session_state['rol_usuario'] = None
+        st.session_state['nombre_usuario'] = None
+        st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### **MENÚ DEL SISTEMA**")
-seccion_activa = st.sidebar.selectbox(
-    "Seleccione Módulo:",
-    [
-        "Dashboard / Resumen Completo",
-        "1. Catálogos (Clientes / Proveedores)",
-        "2. Remisiones (Autocompletar)",
-        "3. Evaluaciones de Calidad",
-        "4. Control de Fletes",
-        "5. Facturación (Autocompletar)",
-        "6. Control de Envases",
-        "7. Reporte MATRIZ"
-    ]
-)
+st.sidebar.markdown("### **LOGO DE EMPRESA**")
+logo_empresa = st.sidebar.file_uploader("Cargar Logo (PNG/JPG):", type=["png", "jpg", "jpeg"])
+
+# Configuración del menú según permisos
+opciones_menu = [
+    "Dashboard / Resumen Completo",
+    "1. Generador Personalizado de Reportes",
+    "2. Catálogos (Clientes / Proveedores)",
+    "3. Agroquímicos y Fertilizantes (Entradas)",
+    "4. Remisiones (Autocompletar)",
+    "5. Evaluaciones de Calidad",
+    "6. Control de Fletes",
+    "7. Facturación y Descuentos",
+    "8. Control de Envases",
+    "9. Reporte MATRIZ Consolidado"
+]
+
+if st.session_state['rol_usuario'] == "Administrador":
+    opciones_menu.append("10. Gestión de Usuarios y Accesos")
+
+st.sidebar.markdown("---")
+seccion_activa = st.sidebar.selectbox("Seleccione Módulo:", opciones_menu)
 
 # ---------------------------------------------------------
 # ENCABEZADO CON LOGO
 # ---------------------------------------------------------
 col_logo, col_head = st.columns([1, 5]) if logo_empresa else (None, st.container())
-
 if logo_empresa:
-    with col_logo:
-        st.image(logo_empresa, width=110)
+    with col_logo: st.image(logo_empresa, width=110)
     with col_head:
         st.markdown("""
             <div class="web-header">
@@ -350,13 +395,12 @@ else:
     """, unsafe_allow_html=True)
 
 # =========================================================
-# SECCIÓN: DASHBOARD AMPLIADO
+# DASHBOARD
 # =========================================================
 if seccion_activa == "Dashboard / Resumen Completo":
     st.markdown('<div class="section-title">Resumen Ejecutivo General</div>', unsafe_allow_html=True)
     
-    # Consultas de métricas clave
-    df_fact = pd.read_sql("SELECT SUM(monto_total) as tot, SUM(CASE WHEN estatus_pago = 'PAGADO' THEN monto_total ELSE 0 END) as pag, SUM(CASE WHEN estatus_pago != 'PAGADO' THEN monto_total ELSE 0 END) as pend, COUNT(id) as cant_fac FROM facturas", conn)
+    df_fact = pd.read_sql("SELECT SUM(monto_total) as tot, SUM(CASE WHEN estatus_pago = 'PAGADO' THEN monto_total ELSE 0 END) as pag, SUM(CASE WHEN estatus_pago != 'PAGADO' THEN monto_total ELSE 0 END) as pend FROM facturas", conn)
     df_rem = pd.read_sql("SELECT COUNT(folio) as tot_rem FROM remisiones", conn)
     df_prod = pd.read_sql("SELECT SUM(cantidad) as tot_cant FROM remision_detalle", conn)
     df_fletes = pd.read_sql("SELECT SUM(monto) as tot_fletes FROM fletes WHERE pagado_por = 'Empresa'", conn)
@@ -368,40 +412,98 @@ if seccion_activa == "Dashboard / Resumen Completo":
     tot_cant = df_prod['tot_cant'].values[0] or 0.0
     tot_flete = df_fletes['tot_fletes'].values[0] or 0.0
 
-    # Fila 1 de Métricas
     col1, col2, col3 = st.columns(3)
     col1.metric("Facturación Total", f"${m_tot:,.2f}")
     col2.metric("Total Cobrado", f"${m_pag:,.2f}")
     col3.metric("Por Cobrar (Pendiente)", f"${m_pend:,.2f}")
 
-    # Fila 2 de Métricas
     col4, col5, col6 = st.columns(3)
     col4.metric("Total de Remisiones Emitidas", f"{tot_rem} remisiones")
     col5.metric("Volumen Total Enviado", f"{tot_cant:,.1f} Kg/Pzs")
-    col6.metric("Gasto Total de Fletes (Empresa)", f"${tot_flete:,.2f}")
+    col6.metric("Gasto Total de Fletes", f"${tot_flete:,.2f}")
 
-    st.markdown("---")
+# =========================================================
+# REQUERIMIENTO 1: GENERADOR PERSONALIZADO DE REPORTES
+# =========================================================
+elif seccion_activa == "1. Generador Personalizado de Reportes":
+    st.markdown('<div class="section-title">Generador de Reportes a la Medida para Dirección</div>', unsafe_allow_html=True)
+    st.info("Seleccione las fechas y marque únicamente las columnas que su jefe o cliente requiere exportar en el archivo de Excel.")
+
+    col_r1, col_r2 = st.columns(2)
+    with col_r1: f_ini_rep = st.date_input("Fecha Inicio:", datetime.now() - timedelta(days=30))
+    with col_r2: f_fin_rep = st.date_input("Fecha Fin:", datetime.now())
+
+    # Carga de Matriz completa
+    query_base = '''
+        SELECT 
+            r.folio as "Remisión", 
+            r.fecha as "Fecha Remisión", 
+            r.cliente as "Cliente",
+            r.ciudad as "Ciudad Destino",
+            r.chofer as "Chofer",
+            r.camion as "Camión",
+            r.placas as "Placas",
+            rd.producto as "Producto", 
+            rd.variedad as "Variedad",
+            rd.tabla as "Tabla/Lote",
+            rd.cantidad as "Cantidad Enviada", 
+            rd.unidad as "Unidad",
+            rd.precio_unitario as "Precio Unitario Campo $",
+            e.folio_evaluacion as "Folio Evaluación",
+            e.grado1_cantidad as "Cant. Grado 1",
+            e.precio_unitario as "Precio Unit. Final $",
+            fac.folio_factura as "Factura", 
+            fac.monto_subtotal as "Subtotal Factura $",
+            fac.descuento_insumos as "Descuento Agroquímicos $",
+            fac.monto_total as "Monto Total Factura $",
+            fac.estatus_pago as "Estatus Pago Factura",
+            fac.fecha_pago as "Fecha Pago Factura",
+            fac.banco as "Banco Cobro",
+            f.pagado_por as "Flete Pagado Por",
+            f.proveedor as "Proveedor Flete",
+            f.monto as "Monto Flete $",
+            f.fecha_pago as "Fecha Pago Flete",
+            f.banco as "Banco Pago Flete"
+        FROM remisiones r
+        LEFT JOIN remision_detalle rd ON r.folio = rd.folio_remision
+        LEFT JOIN evaluaciones e ON r.folio = e.folio_remision
+        LEFT JOIN fletes f ON r.folio = f.folio_remision
+        LEFT JOIN facturas fac ON INSTR(fac.remisiones_asociadas, CAST(r.folio AS TEXT)) > 0
+        WHERE r.fecha BETWEEN ? AND ? ORDER BY r.folio DESC
+    '''
+    df_completo = pd.read_sql(query_base, conn, params=(f_ini_rep, f_fin_rep))
+
+    columnas_disponibles = list(df_completo.columns)
     
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.subheader("Cuentas por Cobrar (Facturas Pendientes)")
-        df_pend = pd.read_sql("SELECT folio_factura as 'Factura', fecha as 'Emisión', cliente as 'Cliente', monto_total as 'Total $', estatus_pago as 'Estatus' FROM facturas WHERE estatus_pago != 'PAGADO'", conn)
-        st.dataframe(df_pend, use_container_width=True)
+    st.markdown("#### Seleccione los campos a incluir en el reporte:")
+    columnas_seleccionadas = st.multiselect(
+        "Campos Visibles en Excel:",
+        options=columnas_disponibles,
+        default=["Remisión", "Fecha Remisión", "Cliente", "Producto", "Cantidad Enviada", "Factura", "Monto Total Factura $", "Estatus Pago Factura"]
+    )
+
+    if columnas_seleccionadas:
+        df_filtrado = df_completo[columnas_seleccionadas]
+        st.markdown("##### Previsualización del Reporte Personalizado")
+        st.dataframe(df_filtrado, use_container_width=True)
         
-    with col_t2:
-        st.subheader("Últimos Fletes Registrados")
-        df_fl_dash = pd.read_sql("SELECT folio_remision as 'Remisión', pagado_por as 'Pagado Por', proveedor as 'Proveedor', monto as 'Monto $', fecha_pago as 'Fecha Pago' FROM fletes ORDER BY id DESC LIMIT 5", conn)
-        st.dataframe(df_fl_dash, use_container_width=True)
+        st.download_button(
+            "📥 Descargar Reporte Personalizado en Excel",
+            data=exportar_excel(df_filtrado, "Reporte_Especial"),
+            file_name=f"Reporte_Especial_{f_ini_rep}_al_{f_fin_rep}.xlsx",
+            mime="application/vnd.ms-excel"
+        )
+    else:
+        st.warning("Seleccione al menos una columna para generar el reporte.")
 
 # =========================================================
-# SECCIÓN 1: CATÁLOGOS POR SEPARADO (CLIENTES / PROVEEDORES DE FLETE)
+# SECCIÓN 2: CATÁLOGOS
 # =========================================================
-elif seccion_activa == "1. Catálogos (Clientes / Proveedores)":
+elif seccion_activa == "2. Catálogos (Clientes / Proveedores)":
     st.markdown('<div class="section-title">Administración de Catálogos</div>', unsafe_allow_html=True)
     tab_cli, tab_prov = st.tabs(["Catálogo de Clientes", "Catálogo de Proveedores de Flete"])
     
     with tab_cli:
-        st.markdown("#### Registrar Nuevo Cliente")
         col_c1, col_c2 = st.columns(2)
         with col_c1:
             c_nombre = st.text_input("Nombre / Razón Social del Cliente:")
@@ -419,16 +521,11 @@ elif seccion_activa == "1. Catálogos (Clientes / Proveedores)":
                                (c_nombre, c_rfc, c_domicilio, c_ciudad, c_tel, c_contacto))
                 conn.commit()
                 st.success(f"Cliente '{c_nombre}' guardado exitosamente.")
-            else:
-                st.warning("Por favor ingrese el nombre del cliente.")
+            else: st.warning("Ingrese el nombre del cliente.")
 
-        st.markdown("---")
-        st.markdown("#### Clientes Registrados")
-        df_c = pd.read_sql("SELECT id as ID, nombre as Nombre, rfc as RFC, ciudad as Ciudad, domicilio as Domicilio, telefono as Teléfono, contacto as Contacto FROM clientes", conn)
-        st.dataframe(df_c, use_container_width=True)
+        st.dataframe(pd.read_sql("SELECT id as ID, nombre as Nombre, rfc as RFC, ciudad as Ciudad, domicilio as Domicilio FROM clientes", conn), use_container_width=True)
 
     with tab_prov:
-        st.markdown("#### Registrar Nuevo Proveedor de Fletes")
         col_p1, col_p2 = st.columns(2)
         with col_p1:
             pf_nombre = st.text_input("Nombre / Línea de Transportes:")
@@ -444,25 +541,56 @@ elif seccion_activa == "1. Catálogos (Clientes / Proveedores)":
                                (pf_nombre, pf_rfc, pf_tel, pf_contacto))
                 conn.commit()
                 st.success(f"Proveedor '{pf_nombre}' guardado exitosamente.")
-            else:
-                st.warning("Por favor ingrese el nombre del proveedor.")
 
-        st.markdown("---")
-        st.markdown("#### Proveedores de Flete Registrados")
-        df_pf = pd.read_sql("SELECT id as ID, nombre as Nombre, rfc as RFC, telefono as Teléfono, contacto as Contacto FROM proveedores_fletes", conn)
-        st.dataframe(df_pf, use_container_width=True)
+        st.dataframe(pd.read_sql("SELECT id as ID, nombre as Nombre, rfc as RFC, telefono as Teléfono FROM proveedores_fletes", conn), use_container_width=True)
 
 # =========================================================
-# SECCIÓN 2: REMISIONES (AUTOCOMPLETAR)
+# REQUERIMIENTO 3: INSUMOS, FERTILIZANTES Y AGROQUÍMICOS
 # =========================================================
-elif seccion_activa == "2. Remisiones (Autocompletar)":
+elif seccion_activa == "3. Agroquímicos y Fertilizantes (Entradas)":
+    st.markdown('<div class="section-title">Registro de Agroquímicos y Fertilizantes Aportados por Clientes</div>', unsafe_allow_html=True)
+    st.info("Registre los insumos entregados por los clientes que posteriormente se descontarán de las facturas de venta.")
+
+    col_i1, col_i2 = st.columns(2)
+    with col_i1:
+        fecha_ins = st.date_input("Fecha de Recepción:", datetime.now())
+        df_cli = pd.read_sql("SELECT nombre FROM clientes", conn)
+        cliente_ins = st.selectbox("Cliente que Provee:", df_cli['nombre'].tolist() if not df_cli.empty else [])
+        prod_ins = st.text_input("Nombre del Agroquímico / Fertilizante:")
+        unid_ins = st.selectbox("Unidad de Medida:", ["Litros (L)", "Kilogramos (Kg)", "Sacos", "Bultos", "Piezas"])
+
+    with col_i2:
+        cant_ins = st.number_input("Cantidad Entregada:", min_value=0.0, step=10.0)
+        costo_u_ins = st.number_input("Costo Unitario ($):", min_value=0.0, step=10.0)
+        monto_tot_ins = cant_ins * costo_u_ins
+        st.markdown(f"**Valor Total Insumo:** `${monto_tot_ins:,.2f}`")
+        obs_ins = st.text_area("Observaciones / Folio Recepción:")
+
+    if st.button("Registrar Insumo en Inventario"):
+        if prod_ins and cant_ins > 0:
+            cursor = conn.cursor()
+            cursor.execute('''INSERT INTO insumos_agroquimicos (fecha, cliente, producto, unidad, cantidad_ingresada, costo_unitario, monto_total, observaciones)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
+                              (fecha_ins, cliente_ins, prod_ins, unid_ins, cant_ins, costo_u_ins, monto_tot_ins, obs_ins))
+            conn.commit()
+            st.success(f"Insumo '{prod_ins}' guardado con valor de ${monto_tot_ins:,.2f}.")
+        else:
+            st.warning("Ingrese la información completa del insumo.")
+
+    st.markdown("---")
+    st.markdown("#### Historial de Insumos / Fertilizantes Registrados")
+    df_ins_ver = pd.read_sql("SELECT id as ID, fecha as Fecha, cliente as Cliente, producto as Producto, unidad as Unidad, cantidad_ingresada as Cantidad, costo_unitario as 'Costo U. $', monto_total as 'Total$' FROM insumos_agroquimicos ORDER BY id DESC", conn)
+    st.dataframe(df_ins_ver, use_container_width=True)
+
+# =========================================================
+# SECCIÓN 4: REMISIONES
+# =========================================================
+elif seccion_activa == "4. Remisiones (Autocompletar)":
     st.markdown('<div class="section-title">Gestión de Remisiones</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["Registro / Carga de Remisión", "Consecutivo y Exportación"])
+    tab1, tab2 = st.tabs(["Registro / Carga de Remisión", "Consecutivo e Histórico"])
     
     with tab1:
-        st.info("Cargue un archivo PDF o imagen de la remisión para autocompletar la información o bien llene el formulario.")
         archivo_rem_auto = st.file_uploader("Adjuntar documento de Remisión (PDF):", type=["pdf", "png", "jpg"])
-        
         r_folio, r_fecha = 1001, datetime.now().date()
         if archivo_rem_auto:
             datos_auto = extraer_datos_pdf(archivo_rem_auto)
@@ -471,7 +599,6 @@ elif seccion_activa == "2. Remisiones (Autocompletar)":
                 if datos_auto["folio"].isdigit(): r_folio = int(datos_auto["folio"])
                 if datos_auto["fecha"]: r_fecha = datos_auto["fecha"]
 
-        st.markdown("---")
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             folio_input = st.number_input("Número de Folio:", value=r_folio, step=1)
@@ -512,29 +639,20 @@ elif seccion_activa == "2. Remisiones (Autocompletar)":
             cursor.execute('''INSERT INTO remision_detalle (folio_remision, cantidad, unidad, producto, variedad, tabla, precio_unitario)
                               VALUES (?, ?, ?, ?, ?, ?, ?)''', (folio_input, cantidad, unidad, producto, variedad, tabla, precio_u))
             conn.commit()
-            st.success(f"Remisión {folio_input} guardada con éxito.")
+            st.success(f"Remisión {folio_input} guardada.")
 
     with tab2:
         df_rem = pd.read_sql('''
             SELECT r.folio as Folio, r.fecha as Fecha, r.cliente as Cliente, r.ciudad as Ciudad,
-                   d.cantidad as Cantidad, d.unidad as Unidad, d.producto as Producto, d.variedad as Variedad, d.tabla as Tabla,
-                   r.chofer as Chofer, r.camion as Camion
+                   d.cantidad as Cantidad, d.unidad as Unidad, d.producto as Producto, d.variedad as Variedad, d.tabla as Tabla
             FROM remisiones r LEFT JOIN remision_detalle d ON r.folio = d.folio_remision ORDER BY r.folio DESC
         ''', conn)
-        
         st.dataframe(df_rem, use_container_width=True)
-        
-        col_exp1, col_exp2 = st.columns(2)
-        with col_exp1:
-            st.download_button("Exportar Remisiones a Excel", data=exportar_excel(df_rem, "Remisiones"), file_name="Remisiones.xlsx", mime="application/vnd.ms-excel")
-        with col_exp2:
-            if st.button("Vista de Impresión"):
-                st.components.v1.html("<script>window.print();</script>", height=0)
 
 # =========================================================
-# SECCIÓN 3: EVALUACIONES
+# SECCIÓN 5: EVALUACIONES
 # =========================================================
-elif seccion_activa == "3. Evaluaciones de Calidad":
+elif seccion_activa == "5. Evaluaciones de Calidad":
     st.markdown('<div class="section-title">Evaluaciones de Calidad</div>', unsafe_allow_html=True)
     col_e1, col_e2 = st.columns(2)
     with col_e1:
@@ -553,12 +671,12 @@ elif seccion_activa == "3. Evaluaciones de Calidad":
         cursor.execute('''INSERT INTO evaluaciones (folio_evaluacion, folio_remision, fecha, grado1_cantidad, precio_unitario, observaciones)
                           VALUES (?, ?, ?, ?, ?, ?)''', (folio_eval, folio_rem_sel, fecha_eval, grado1_cant, precio_eval, obs_eval))
         conn.commit()
-        st.success("Evaluación guardada y asociada correctamente.")
+        st.success("Evaluación guardada.")
 
 # =========================================================
-# SECCIÓN 4: CONTROL DE FLETES
+# SECCIÓN 6: FLETES
 # =========================================================
-elif seccion_activa == "4. Control de Fletes":
+elif seccion_activa == "6. Control de Fletes":
     st.markdown('<div class="section-title">Control de Fletes y Transporte</div>', unsafe_allow_html=True)
     col_fl1, col_fl2 = st.columns(2)
     with col_fl1:
@@ -566,10 +684,8 @@ elif seccion_activa == "4. Control de Fletes":
         rem_opts = df_rems['folio'].tolist() if not df_rems.empty else []
         folio_rem_flete = st.selectbox("Seleccionar Remisión:", rem_opts)
         paga_empresa = st.radio("Flete pagado por:", ["Cliente", "Empresa"])
-        
         df_pf = pd.read_sql("SELECT nombre FROM proveedores_fletes", conn)
-        prov_list = df_pf['nombre'].tolist() if not df_pf.empty else []
-        proveedor_flete = st.selectbox("Proveedor / Línea de Flete:", prov_list)
+        proveedor_flete = st.selectbox("Proveedor / Línea de Flete:", df_pf['nombre'].tolist() if not df_pf.empty else [])
 
     with col_fl2:
         monto_flete = st.number_input("Monto / Costo del Flete ($):", min_value=0.0, step=100.0)
@@ -581,13 +697,13 @@ elif seccion_activa == "4. Control de Fletes":
         cursor.execute('''INSERT INTO fletes (folio_remision, pagado_por, proveedor, monto, fecha_pago, banco)
                           VALUES (?, ?, ?, ?, ?, ?)''', (folio_rem_flete, paga_empresa, proveedor_flete, monto_flete, fecha_pago_flete, banco_flete))
         conn.commit()
-        st.success("Información de flete registrada.")
+        st.success("Flete registrado.")
 
 # =========================================================
-# SECCIÓN 5: FACTURACIÓN
+# SECCIÓN 7: FACTURACIÓN Y DESCUENTO DE AGROQUÍMICOS
 # =========================================================
-elif seccion_activa == "5. Facturación (Autocompletar)":
-    st.markdown('<div class="section-title">Módulo de Facturación</div>', unsafe_allow_html=True)
+elif seccion_activa == "7. Facturación y Descuentos":
+    st.markdown('<div class="section-title">Módulo de Facturación y Descuento de Insumos</div>', unsafe_allow_html=True)
     
     archivo_fac = st.file_uploader("Subir PDF de Factura para autocompletar:", type=["pdf"])
     f_folio, f_rfc, f_monto, f_fecha = "", "", 0.0, datetime.now().date()
@@ -606,28 +722,54 @@ elif seccion_activa == "5. Facturación (Autocompletar)":
         df_cli = pd.read_sql("SELECT nombre, rfc FROM clientes", conn)
         cliente_fac = st.selectbox("Cliente:", df_cli['nombre'].tolist() if not df_cli.empty else [])
         rfc_fac = st.text_input("RFC Receptor:", value=f_rfc)
-        uuid_fac = st.text_input("Folio Fiscal (UUID):")
+        remision_asoc = st.text_input("Remisión(es) Asociada(s) (ej: 1001, 1002):")
 
     with col_fac2:
-        monto_total = st.number_input("Monto Total ($):", value=f_monto, min_value=0.0)
+        monto_subtotal = st.number_input("Subtotal de la Venta ($):", value=f_monto, min_value=0.0)
+        
+        # Selección e integración del descuento de agroquímicos del cliente
+        st.markdown("---")
+        st.markdown("##### **Descuento de Fertilizantes / Agroquímicos**")
+        df_ins_cli = pd.read_sql("SELECT id, producto, monto_total FROM insumos_agroquimicos WHERE cliente=?", conn, params=(cliente_fac,))
+        
+        opciones_insumo = ["Ninguno / Sin Descuento"]
+        dict_insumos = {}
+        for index, row in df_ins_cli.iterrows():
+            lbl = f"{row['producto']} - Total Disponible: ${row['monto_total']:,.2f}"
+            opciones_insumo.append(lbl)
+            dict_insumos[lbl] = row['monto_total']
+
+        insumo_sel = st.selectbox("Aplicar Descuento de Insumo Aportado:", opciones_insumo)
+        
+        descuento_aplicado = 0.0
+        if insumo_sel != "Ninguno / Sin Descuento":
+            descuento_aplicado = st.number_input("Monto a Descontar ($):", value=float(dict_insumos[insumo_sel]), min_value=0.0)
+
+        monto_final_neto = max(0.0, monto_subtotal - descuento_aplicado)
+        st.markdown(f"### **Total Neto a Facturar:** `${monto_final_neto:,.2f}`")
+
+    st.markdown("---")
+    col_f3, col_f4 = st.columns(2)
+    with col_f3:
         metodo_pago = st.selectbox("Método de Pago:", ["PPD - Diferido", "PUE - Exhibición única"])
         estatus_pago = st.selectbox("Estatus de Pago:", ["PENDIENTE DE PAGO", "PAGADO"])
-        fecha_pago_fac = st.date_input("Fecha de Pago Recibido (Si aplica):", datetime.now())
+    with col_f4:
+        fecha_pago_fac = st.date_input("Fecha de Pago Recibido:", datetime.now())
         banco_fac = st.selectbox("Banco Recibido:", ["BBVA", "Banamex", "Santander", "Banorte", "Otro"])
 
     if st.button("Guardar Factura"):
         cursor = conn.cursor()
-        cursor.execute('''INSERT INTO facturas (folio_factura, fecha, cliente, rfc, folio_fiscal, metodo_pago, monto_total, estatus_pago, fecha_pago, banco)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                          (folio_fac, fecha_fac, cliente_fac, rfc_fac, uuid_fac, metodo_pago, monto_total, estatus_pago, 
+        cursor.execute('''INSERT INTO facturas (folio_factura, fecha, cliente, rfc, monto_subtotal, descuento_insumos, monto_total, remisiones_asociadas, insumo_aplicado, metodo_pago, estatus_pago, fecha_pago, banco)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                          (folio_fac, fecha_fac, cliente_fac, rfc_fac, monto_subtotal, descuento_aplicado, monto_final_neto, remision_asoc, insumo_sel, metodo_pago, estatus_pago,
                            fecha_pago_fac if estatus_pago == "PAGADO" else None, banco_fac if estatus_pago == "PAGADO" else None))
         conn.commit()
-        st.success("Factura guardada con éxito.")
+        st.success("Factura y descuento registrados correctamente.")
 
 # =========================================================
-# SECCIÓN 6: CONTROL DE ENVASES
+# SECCIÓN 8: ENVASES
 # =========================================================
-elif seccion_activa == "6. Control de Envases":
+elif seccion_activa == "8. Control de Envases":
     st.markdown('<div class="section-title">Control de Envases y Cajas</div>', unsafe_allow_html=True)
     col_en1, col_en2 = st.columns(2)
     with col_en1:
@@ -646,11 +788,10 @@ elif seccion_activa == "6. Control de Envases":
         st.success("Movimiento registrado.")
 
 # =========================================================
-# SECCIÓN 7: REPORTE MATRIZ (COMPLETO)
+# SECCIÓN 9: REPORTE MATRIZ CONSOLIDADO
 # =========================================================
-elif seccion_activa == "7. Reporte MATRIZ":
+elif seccion_activa == "9. Reporte MATRIZ Consolidado":
     st.markdown('<div class="section-title">Reporte Consolidado MATRIZ</div>', unsafe_allow_html=True)
-    
     col_m1, col_m2 = st.columns(2)
     with col_m1: f_inicio = st.date_input("Desde:", datetime.now() - timedelta(days=30))
     with col_m2: f_fin = st.date_input("Hasta:", datetime.now())
@@ -665,14 +806,14 @@ elif seccion_activa == "7. Reporte MATRIZ":
             e.grado1_cantidad as "Cant. Grado 1",
             e.precio_unitario as "Precio Unit. $",
             fac.folio_factura as "Factura", 
-            fac.monto_total as "Monto Factura $",
-            fac.estatus_pago as "Estatus Pago Factura",
+            fac.monto_subtotal as "Subtotal $",
+            fac.descuento_insumos as "Desc. Agroquímicos $",
+            fac.monto_total as "Total Factura $",
+            fac.estatus_pago as "Estatus Pago",
             fac.fecha_pago as "Fecha Pago Factura",
             f.pagado_por as "Flete Pagado Por",
             f.proveedor as "Proveedor Flete",
-            f.monto as "Monto Flete $",
-            f.fecha_pago as "Fecha Pago Flete",
-            f.banco as "Banco Flete"
+            f.monto as "Monto Flete $"
         FROM remisiones r
         LEFT JOIN remision_detalle rd ON r.folio = rd.folio_remision
         LEFT JOIN evaluaciones e ON r.folio = e.folio_remision
@@ -681,12 +822,35 @@ elif seccion_activa == "7. Reporte MATRIZ":
         WHERE r.fecha BETWEEN ? AND ? ORDER BY r.folio DESC
     '''
     df_matriz = pd.read_sql(query_matriz, conn, params=(f_inicio, f_fin))
-    
     st.dataframe(df_matriz, use_container_width=True)
-    
-    col_rep1, col_rep2 = st.columns(2)
-    with col_rep1:
-        st.download_button("Exportar Reporte MATRIZ a Excel", data=exportar_excel(df_matriz, "MATRIZ"), file_name=f"Reporte_MATRIZ_{f_inicio}_al_{f_fin}.xlsx", mime="application/vnd.ms-excel")
-    with col_rep2:
-        if st.button("Imprimir Reporte Matriz"):
-            st.components.v1.html("<script>window.print();</script>", height=0)
+    st.download_button("Exportar MATRIZ Completa a Excel", data=exportar_excel(df_matriz, "MATRIZ"), file_name=f"Reporte_MATRIZ_{f_inicio}_al_{f_fin}.xlsx", mime="application/vnd.ms-excel")
+
+# =========================================================
+# REQUERIMIENTO 2: GESTIÓN DE USUARIOS Y ACCESOS
+# =========================================================
+elif seccion_activa == "10. Gestión de Usuarios y Accesos":
+    st.markdown('<div class="section-title">Administración de Usuarios y Accesos al Sistema</div>', unsafe_allow_html=True)
+    st.info("Agregue o modifique las cuentas de usuario con inicio de sesión para restringir o permitir la operación en la plataforma.")
+
+    col_u1, col_u2 = st.columns(2)
+    with col_u1:
+        nuevo_user = st.text_input("Nombre de Usuario (Login):")
+        nuevo_pass = st.text_input("Contraseña de Acceso:", type="password")
+    with col_u2:
+        nombre_real = st.text_input("Nombre Completo:")
+        rol_asig = st.selectbox("Rol / Permiso:", ["Operador", "Administrador"])
+
+    if st.button("Crear / Actualizar Usuario"):
+        if nuevo_user and nuevo_pass:
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO usuarios (usuario, password, nombre, rol) VALUES (?, ?, ?, ?)",
+                           (nuevo_user, nuevo_pass, nombre_real, rol_asig))
+            conn.commit()
+            st.success(f"Usuario '{nuevo_user}' registrado exitosamente con rol de {rol_asig}.")
+        else:
+            st.warning("Ingrese usuario y contraseña válidos.")
+
+    st.markdown("---")
+    st.markdown("#### Usuarios Activos en el Sistema")
+    df_users = pd.read_sql("SELECT id as ID, usuario as 'Usuario (Login)', nombre as 'Nombre Completo', rol as 'Rol' FROM usuarios", conn)
+    st.dataframe(df_users, use_container_width=True)
