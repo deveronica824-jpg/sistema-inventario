@@ -13,113 +13,117 @@ except ImportError:
     PDF_PARSER_AVAILABLE = False
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN DE PÁGINA Y ESTILOS DE PÁGINA WEB CORPORATIVA
+# CONFIGURACIÓN DE PÁGINA Y ESTILOS SUAVES Y CLAROS
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="Sistema de Gestión - Pedregal Los Vera",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
     <style>
-    /* Fondo general claro */
+    /* Fondo general en azul pastel extra claro */
     .stApp {
         background-color: #F8FAFC;
         color: #0F172A;
         font-family: 'Segoe UI', Roboto, sans-serif;
     }
     
+    /* Personalización de la Barra Lateral (Sidebar) */
+    section[data-testid="stSidebar"] {
+        background-color: #F1F5F9 !important;
+        border-right: 1px solid #CBD5E1;
+    }
+    
     /* Encabezado Principal Web */
     .web-header {
         background-color: #FFFFFF;
-        padding: 20px 25px;
-        border-radius: 12px;
+        padding: 18px 24px;
+        border-radius: 10px;
         border: 1px solid #E2E8F0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        margin-bottom: 25px;
+        border-left: 5px solid #3B82F6;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
     }
     .web-title {
-        font-size: 26px;
+        font-size: 24px;
         font-weight: 800;
         color: #1E3A8A;
         margin: 0;
     }
     .web-subtitle {
-        font-size: 14px;
-        color: #64748B;
-        margin-top: 4px;
+        font-size: 13px;
+        color: #475569;
+        margin-top: 2px;
     }
     
-    /* Titulares y fuentes más grandes */
+    /* Titulares de Sección */
     .section-title {
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 700;
-        color: #0F172A;
+        color: #1E3A8A;
         margin-bottom: 15px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #E2E8F0;
     }
     
-    /* Estilo de los campos de entrada: Gris claro con texto negro */
+    /* Estilo de Campos de Entrada: Gris claro suave y Azul Pastel sin tonos oscuros */
     div[data-baseweb="input"] > div, 
     div[data-baseweb="select"] > div,
     textarea {
-        background-color: #F1F5F9 !important;
-        border: 1px solid #CBD5E1 !important;
-        border-radius: 8px !important;
+        background-color: #EFF6FF !important;
+        border: 1px solid #BFDBFE !important;
+        border-radius: 6px !important;
         color: #0F172A !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
     }
     div[data-baseweb="input"] input {
         color: #0F172A !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
     }
     label {
-        font-size: 15px !important;
+        font-size: 14px !important;
         font-weight: 600 !important;
-        color: #334155 !important;
+        color: #1E293B !important;
     }
     
-    /* Tarjetas de Navegación (Cuadritos) */
-    .nav-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-top: 4px solid #2563EB;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        margin-bottom: 15px;
-    }
-    
-    /* Botones ejecutivos */
+    /* Botones de Acción principales (Azul Corporativo Claro) */
     .stButton>button {
-        background-color: #1E3A8A;
+        background-color: #2563EB;
         color: #FFFFFF;
-        border-radius: 8px;
+        border-radius: 6px;
         border: none;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
-        padding: 10px 20px;
+        padding: 8px 16px;
         width: 100%;
     }
     .stButton>button:hover {
-        background-color: #2563EB;
+        background-color: #1D4ED8;
         color: #FFFFFF;
     }
     
-    /* Botones Secundarios e Impresión */
-    .print-btn {
-        background-color: #475569;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 14px;
-        display: inline-block;
-        margin-bottom: 10px;
+    /* Tarjetas de Métricas en el Dashboard */
+    div[data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        border: 1px solid #DBEAFE;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
-    
-    /* Formato exclusivo para impresión */
+    div[data-testid="stMetricLabel"] {
+        color: #475569;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #1E3A8A;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    /* Impresión */
     @media print {
         body * { visibility: hidden; }
         .printable-area, .printable-area * { visibility: visible; }
@@ -130,7 +134,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# EXTRACCIÓN AUTOMÁTICA
+# EXTRACCIÓN AUTOMÁTICA DE DATOS (OCR)
 # ---------------------------------------------------------
 def extraer_datos_pdf(archivo_pdf):
     datos = {"folio": "", "rfc": "", "fecha": None, "monto_total": 0.0, "texto_detectado": False}
@@ -194,7 +198,7 @@ def exportar_excel(dataframe, nombre_hoja):
     return output.getvalue()
 
 # ---------------------------------------------------------
-# ENCABEZADO TIPO SITIO WEB
+# ENCABEZADO
 # ---------------------------------------------------------
 st.markdown("""
     <div class="web-header">
@@ -203,34 +207,27 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Gestión de Estado de Navegación por Módulos
-if 'seccion_activa' not in st.session_state:
-    st.session_state.seccion_activa = "Dashboard"
-
-# NAV BAR DE CUADROS / TARJETAS
-c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
-
-with c1:
-    if st.button("Dashboard"): st.session_state.seccion_activa = "Dashboard"
-with c2:
-    if st.button("Remisiones"): st.session_state.seccion_activa = "Remisiones"
-with c3:
-    if st.button("Evaluaciones"): st.session_state.seccion_activa = "Evaluaciones"
-with c4:
-    if st.button("Fletes"): st.session_state.seccion_activa = "Fletes"
-with c5:
-    if st.button("Facturación"): st.session_state.seccion_activa = "Facturación"
-with c6:
-    if st.button("Envases"): st.session_state.seccion_activa = "Envases"
-with c7:
-    if st.button("Reportes"): st.session_state.seccion_activa = "Reportes"
-
-st.markdown("---")
+# ---------------------------------------------------------
+# MENÚ DESPLEGABLE EN LA BARRA LATERAL IZQUIERDA
+# ---------------------------------------------------------
+st.sidebar.markdown("### **MENÚ DEL SISTEMA**")
+seccion_activa = st.sidebar.selectbox(
+    "Seleccione Módulo:",
+    [
+        "Dashboard / Resumen",
+        "1. Remisiones (Autocompletar)",
+        "2. Evaluaciones",
+        "3. Fletes",
+        "4. Facturación (Autocompletar)",
+        "5. Control de Envases",
+        "6. Reporte MATRIZ"
+    ]
+)
 
 # =========================================================
 # SECCIÓN: DASHBOARD
 # =========================================================
-if st.session_state.seccion_activa == "Dashboard":
+if seccion_activa == "Dashboard / Resumen":
     st.markdown('<div class="section-title">Resumen Ejecutivo</div>', unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
@@ -247,22 +244,38 @@ if st.session_state.seccion_activa == "Dashboard":
     col_m3.metric("Por Cobrar", f"${m_pend:,.2f}")
     col_m4.metric("Promedio Grado 1", f"{g1_avg:,.1f} Kg")
 
-    st.markdown("### Cuentas por Cobrar")
+    st.markdown("---")
+    st.subheader("Cuentas por Cobrar Pendientes")
     df_pend = pd.read_sql("SELECT folio_factura as 'Folio Factura', fecha as Fecha, cliente as Cliente, monto_total as Total, estatus_pago as Estatus FROM facturas WHERE estatus_pago != 'PAGADO'", conn)
     st.dataframe(df_pend, use_container_width=True)
 
 # =========================================================
-# SECCIÓN: REMISIONES
+# SECCIÓN 1: REMISIONES (CON AUTOCOMPLETADO)
 # =========================================================
-elif st.session_state.seccion_activa == "Remisiones":
-    st.markdown('<div class="section-title">Módulo de Remisiones</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["Nueva Remisión", "Consulta y Exportación"])
+elif seccion_activa == "1. Remisiones (Autocompletar)":
+    st.markdown('<div class="section-title">Gestión de Remisiones</div>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["Registro / Carga de Remisión", "Consecutivo y Exportación"])
     
     with tab1:
+        st.info("Cargue un archivo PDF/Imagen de la remisión para extraer los datos en automático o complete el formulario de forma manual.")
+        archivo_rem_auto = st.file_uploader("Adjuntar documento de Remisión (PDF):", type=["pdf", "png", "jpg"])
+        
+        # Extracción automática
+        r_folio, r_fecha = 1001, datetime.now().date()
+        if archivo_rem_auto:
+            datos_auto = extraer_datos_pdf(archivo_rem_auto)
+            if datos_auto["texto_detectado"]:
+                st.success("Información del documento leída correctamente.")
+                if datos_auto["folio"].isdigit():
+                    r_folio = int(datos_auto["folio"])
+                if datos_auto["fecha"]:
+                    r_fecha = datos_auto["fecha"]
+
+        st.markdown("---")
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            folio_input = st.number_input("Número de Folio:", value=1001, step=1)
-            fecha_rem = st.date_input("Fecha:", datetime.now())
+            folio_input = st.number_input("Número de Folio:", value=r_folio, step=1)
+            fecha_rem = st.date_input("Fecha:", value=r_fecha)
             df_cli = pd.read_sql("SELECT nombre, ciudad FROM clientes", conn)
             cli_list = df_cli['nombre'].tolist() if not df_cli.empty else []
             cliente_sel = st.selectbox("Cliente:", cli_list + ["+ Nuevo Cliente"])
@@ -282,13 +295,14 @@ elif st.session_state.seccion_activa == "Remisiones":
             with col_t1: h_inicio = st.time_input("Hora Inicio:")
             with col_t2: h_salida = st.time_input("Hora Salida:")
 
-        st.markdown("#### Detalle de Producto")
+        st.markdown("#### Detalle del Producto")
         col_p1, col_p2, col_p3 = st.columns(3)
         with col_p1:
             cantidad = st.number_input("Cantidad:", min_value=0.0, step=1.0)
             unidad = st.selectbox("Unidad:", ["Cajones", "Piezas", "Kg", "Cajas"])
         with col_p2:
-            producto = st.selectbox("Producto:", ["Brócoli", "Lechuga Orejona", "Lechuga Italiana", "Apio"])
+            producto = st.selectbox("Producto:", ["Brócoli", "Lechuga Orejona", "Lechuga Italiana", "Apio", "Otro"])
+            if producto == "Otro": producto = st.text_input("Especifique Producto:")
             variedad = st.text_input("Variedad:")
         with col_p3:
             tabla = st.text_input("Tabla:")
@@ -296,17 +310,20 @@ elif st.session_state.seccion_activa == "Remisiones":
 
         if st.button("Guardar Remisión"):
             cursor = conn.cursor()
-            cursor.execute('''INSERT INTO remisiones (folio, fecha, cliente, ciudad, chofer, camion, placas, hora_inicio, hora_salida)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', (folio_input, fecha_rem, cliente_sel, ciudad_input, chofer, camion, placas, str(h_inicio), str(h_salida)))
+            cursor.execute('''INSERT INTO remisiones (folio, fecha, cliente, ciudad, chofer, camion, placas, hora_inicio, hora_salida, archivo_adjunto, nombre_archivo)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                              (folio_input, fecha_rem, cliente_sel, ciudad_input, chofer, camion, placas, str(h_inicio), str(h_salida),
+                               archivo_rem_auto.read() if archivo_rem_auto else None, archivo_rem_auto.name if archivo_rem_auto else ""))
             cursor.execute('''INSERT INTO remision_detalle (folio_remision, cantidad, unidad, producto, variedad, tabla, precio_unitario)
                               VALUES (?, ?, ?, ?, ?, ?, ?)''', (folio_input, cantidad, unidad, producto, variedad, tabla, precio_u))
             conn.commit()
-            st.success("Remisión registrada con éxito.")
+            st.success(f"Remisión {folio_input} guardada correctamente.")
 
     with tab2:
         df_rem = pd.read_sql('''
             SELECT r.folio as Folio, r.fecha as Fecha, r.cliente as Cliente, r.ciudad as Ciudad,
-                   d.cantidad as Cantidad, d.unidad as Unidad, d.producto as Producto, d.variedad as Variedad, d.tabla as Tabla
+                   d.cantidad as Cantidad, d.unidad as Unidad, d.producto as Producto, d.variedad as Variedad, d.tabla as Tabla,
+                   r.chofer as Chofer, r.camion as Camion
             FROM remisiones r LEFT JOIN remision_detalle d ON r.folio = d.folio_remision ORDER BY r.folio DESC
         ''', conn)
         
@@ -320,15 +337,15 @@ elif st.session_state.seccion_activa == "Remisiones":
                 st.components.v1.html("<script>window.print();</script>", height=0)
 
 # =========================================================
-# SECCIÓN: EVALUACIONES
+# SECCIÓN 2: EVALUACIONES
 # =========================================================
-elif st.session_state.seccion_activa == "Evaluaciones":
+elif seccion_activa == "2. Evaluaciones":
     st.markdown('<div class="section-title">Evaluaciones de Calidad</div>', unsafe_allow_html=True)
     col_e1, col_e2 = st.columns(2)
     with col_e1:
         df_rems = pd.read_sql("SELECT folio FROM remisiones ORDER BY folio DESC", conn)
         rem_opts = df_rems['folio'].tolist() if not df_rems.empty else []
-        folio_rem_sel = st.selectbox("Asociar a Remisión:", rem_opts)
+        folio_rem_sel = st.selectbox("Asociar a Folio Remisión:", rem_opts)
         folio_eval = st.text_input("Folio Evaluación Cliente:")
         fecha_eval = st.date_input("Fecha Evaluación:", datetime.now())
     with col_e2:
@@ -341,12 +358,12 @@ elif st.session_state.seccion_activa == "Evaluaciones":
         cursor.execute('''INSERT INTO evaluaciones (folio_evaluacion, folio_remision, fecha, grado1_cantidad, precio_unitario, observaciones)
                           VALUES (?, ?, ?, ?, ?, ?)''', (folio_eval, folio_rem_sel, fecha_eval, grado1_cant, precio_eval, obs_eval))
         conn.commit()
-        st.success("Evaluación vinculada exitosamente.")
+        st.success("Evaluación vinculada con éxito.")
 
 # =========================================================
-# SECCIÓN: FLETES
+# SECCIÓN 3: FLETES
 # =========================================================
-elif st.session_state.seccion_activa == "Fletes":
+elif seccion_activa == "3. Fletes":
     st.markdown('<div class="section-title">Control de Fletes</div>', unsafe_allow_html=True)
     col_fl1, col_fl2 = st.columns(2)
     with col_fl1:
@@ -363,13 +380,13 @@ elif st.session_state.seccion_activa == "Fletes":
         cursor.execute('''INSERT INTO fletes (folio_remision, pagado_por, fecha_pago, banco)
                           VALUES (?, ?, ?, ?)''', (folio_rem_flete, paga_empresa, fecha_pago_flete, banco_flete))
         conn.commit()
-        st.success("Registro de flete guardado.")
+        st.success("Flete registrado correctamente.")
 
 # =========================================================
-# SECCIÓN: FACTURACIÓN
+# SECCIÓN 4: FACTURACIÓN
 # =========================================================
-elif st.session_state.seccion_activa == "Facturación":
-    st.markdown('<div class="section-title">Facturación (Lectura Automática)</div>', unsafe_allow_html=True)
+elif seccion_activa == "4. Facturación (Autocompletar)":
+    st.markdown('<div class="section-title">Módulo de Facturación</div>', unsafe_allow_html=True)
     
     archivo_fac = st.file_uploader("Subir PDF de Factura para autocompletar:", type=["pdf"])
     f_folio, f_rfc, f_monto, f_fecha = "", "", 0.0, datetime.now().date()
@@ -377,7 +394,7 @@ elif st.session_state.seccion_activa == "Facturación":
     if archivo_fac:
         datos = extraer_datos_pdf(archivo_fac)
         if datos["texto_detectado"]:
-            st.success("Datos leídos automáticamente.")
+            st.success("Datos extraídos automáticamente del documento.")
             f_folio, f_rfc, f_monto = datos["folio"], datos["rfc"], datos["monto_total"]
             if datos["fecha"]: f_fecha = datos["fecha"]
 
@@ -398,12 +415,12 @@ elif st.session_state.seccion_activa == "Facturación":
         cursor.execute('''INSERT INTO facturas (folio_factura, fecha, cliente, rfc, folio_fiscal, metodo_pago, monto_total, estatus_pago)
                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (folio_fac, fecha_fac, cliente_fac, rfc_fac, uuid_fac, metodo_pago, monto_total, "PAGADO" if "PUE" in metodo_pago else "PENDIENTE"))
         conn.commit()
-        st.success("Factura almacenada correctamente.")
+        st.success("Factura guardada exitosamente.")
 
 # =========================================================
-# SECCIÓN: CONTROL DE ENVASES
+# SECCIÓN 5: CONTROL DE ENVASES
 # =========================================================
-elif st.session_state.seccion_activa == "Envases":
+elif seccion_activa == "5. Control de Envases":
     st.markdown('<div class="section-title">Control de Envases y Cajas</div>', unsafe_allow_html=True)
     col_en1, col_en2 = st.columns(2)
     with col_en1:
@@ -414,17 +431,17 @@ elif st.session_state.seccion_activa == "Envases":
         tipo_envase = st.selectbox("Tipo Envase:", ["Cajón Blanco (50 Kg)", "Caja MR Lucky", "Caja Plástica", "Tarima Madera"])
         cant_envase = st.number_input("Cantidad:", min_value=1, step=10)
 
-    if st.button("Registrar Movimiento"):
+    if st.button("Registrar Envase"):
         cursor = conn.cursor()
         cursor.execute('''INSERT INTO control_envases (fecha, cliente, tipo_movimiento, tipo_envase, cantidad)
                           VALUES (?, ?, ?, ?, ?)''', (datetime.now().date(), cliente_env, tipo_mov, tipo_envase, cant_envase))
         conn.commit()
-        st.success("Movimiento guardado.")
+        st.success("Movimiento registrado.")
 
 # =========================================================
-# SECCIÓN: REPORTES Y MATRIZ
+# SECCIÓN 6: REPORTES
 # =========================================================
-elif st.session_state.seccion_activa == "Reportes":
+elif seccion_activa == "6. Reporte MATRIZ":
     st.markdown('<div class="section-title">Reporte General MATRIZ</div>', unsafe_allow_html=True)
     
     col_m1, col_m2 = st.columns(2)
@@ -447,7 +464,7 @@ elif st.session_state.seccion_activa == "Reportes":
     
     col_rep1, col_rep2 = st.columns(2)
     with col_rep1:
-        st.download_button("Descargar Reporte MATRIZ (Excel)", data=exportar_excel(df_matriz, "MATRIZ"), file_name=f"Reporte_MATRIZ_{f_inicio}_al_{f_fin}.xlsx", mime="application/vnd.ms-excel")
+        st.download_button("Exportar Reporte MATRIZ a Excel", data=exportar_excel(df_matriz, "MATRIZ"), file_name=f"Reporte_MATRIZ_{f_inicio}_al_{f_fin}.xlsx", mime="application/vnd.ms-excel")
     with col_rep2:
         if st.button("Imprimir Reporte Matriz"):
             st.components.v1.html("<script>window.print();</script>", height=0)
